@@ -12,7 +12,7 @@ test: lint
 
 pre-commit: lint
 
-run:
+run: lint
 	uv run python __main__.py
 
 generate-requirements:
