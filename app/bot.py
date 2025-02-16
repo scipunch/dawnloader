@@ -1,4 +1,5 @@
 import logging
+import tempfile
 from pathlib import Path
 
 from result import Err, Ok
@@ -31,16 +32,19 @@ def init(bot: AsyncTeleBot) -> None:
 
         media_downloader = service.get_platform_handler(url)
 
-        match await media_downloader(url):
-            case Err(_):
-                await bot.edit_message_text(
-                    "Sorry, couldn't download the media. Please try again.",
-                    message.chat.id,
-                    processing_msg.message_id,
-                )
-            case Ok(filepath):
-                await _send_media(bot, message.chat.id, filepath)
-                await bot.delete_message(message.chat.id, processing_msg.message_id)
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            download_dir = Path(tmpdirname)
+            match await media_downloader(url, download_dir):
+                case Err(_):
+                    await bot.edit_message_text(
+                        "Sorry, couldn't download the media. Please try again.",
+                        message.chat.id,
+                        processing_msg.message_id,
+                    )
+                case Ok(filepath):
+                    for filepath in download_dir.iterdir():
+                        await _send_media(bot, message.chat.id, filepath)
+                    await bot.delete_message(message.chat.id, processing_msg.message_id)
 
     @bot.message_handler()
     async def handle_invalid_message(message: Message) -> None:

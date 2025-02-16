@@ -15,7 +15,7 @@ class MediaDownloaderError(Exception):
 
 
 Url = str
-MediaDownloader = Callable[[Url], Awaitable[Result[Path, MediaDownloaderError]]]
+MediaDownloader = Callable[[Url, Path], Awaitable[Result[None, MediaDownloaderError]]]
 
 
 def get_platform_handler(url: str) -> MediaDownloader:
@@ -42,7 +42,9 @@ def is_media_url_supported(url: Url) -> bool:
     return domain in ("youtube.com", "youtu.be", "instagram.com")
 
 
-async def download_youtube(url: Url) -> Result[Path, MediaDownloaderError]:
+async def download_youtube(
+    url: Url, target_dir: Path
+) -> Result[None, MediaDownloaderError]:
     """Download video from YouTube."""
 
     opts = {
@@ -51,7 +53,7 @@ async def download_youtube(url: Url) -> Result[Path, MediaDownloaderError]:
             "+bestaudio[ext=m4a]/best[ext=mp4][filesize<50M]/best"
         ),
         "merge_output_format": "mp4",
-        "outtmpl": "%(title)s.%(ext)s",
+        "outtmpl": str(target_dir / "%(title)s.%(ext)s"),
         "quiet": True,
         "no_warnings": True,
         "postprocessors": [
@@ -64,44 +66,30 @@ async def download_youtube(url: Url) -> Result[Path, MediaDownloaderError]:
 
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            return Ok(Path(ydl.prepare_filename(info)))
+            ydl.extract_info(url, download=True)
     except Exception:
         log.exception("Error downloading YouTube video")
         return Err(MediaDownloaderError())
 
+    return Ok(None)
 
-async def download_instagram(url: Url) -> Result[Path, MediaDownloaderError]:
+
+async def download_instagram(
+    url: Url, target_dir: Path
+) -> Result[None, MediaDownloaderError]:
     """Download media from Instagram."""
     instagram = instaloader.Instaloader()
-    try:
-        shortcode = url.split("/")[-2]
-        post = instaloader.Post.from_shortcode(instagram.context, shortcode)
+    shortcode = url.split("/")[-2]
+    post = instaloader.Post.from_shortcode(instagram.context, shortcode)
 
-        download_dir = Path("instagram")
-        download_dir.mkdir(exist_ok=True)
-        log.info("Processing %s post from instagram", shortcode)
+    log.info("Processing %s post from instagram", shortcode)
 
-        if post.is_video:
-            log.info("Downloading video from instagram")
-            status = instagram.download_post(post, target=download_dir)
-            if not status:
-                return Err(MediaDownloaderError())
-
-            return Ok(
-                next(
-                    path
-                    for path in download_dir.iterdir()
-                    if path.is_file() and path.name.endswith(".mp4")
-                )
-            )
-
-        log.info("Downloading picture from instagram")
-        download_path = download_dir / shortcode
-        instagram.download_pic(
-            filename=download_path, url=post.url, mtime=post.date_utc
-        )
-        return Ok(download_path.with_suffix(".jpg"))
-    except Exception:
-        log.exception("Error downloading Instagram content")
+    status = instagram.download_post(post, target=target_dir)
+    if not status:
         return Err(MediaDownloaderError())
+
+    for path in target_dir.iterdir():
+        if not path.name.endswith(".mp4"):
+            path.unlink()
+
+    return Ok(None)
