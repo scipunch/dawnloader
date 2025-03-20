@@ -83,7 +83,7 @@ async def download_instagram(
     try:
         post = instaloader.Post.from_shortcode(instagram.context, shortcode)
     except Exception:
-        log.exception("Faile to get post metadata")
+        log.exception("Failed to get post metadata")
         return Err(MediaDownloaderError())
 
     log.info("Processing %s post from instagram", shortcode)

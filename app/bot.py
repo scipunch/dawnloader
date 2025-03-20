@@ -60,7 +60,7 @@ def init(bot: AsyncTeleBot) -> None:
 
                             await bot.reply_to(message, error_text)
                             break
-            await bot.delete_message(message.chat.id, processing_msg.message_id)
+                    await bot.delete_message(message.chat.id, processing_msg.message_id)
 
     @bot.message_handler()
     async def handle_invalid_message(message: Message) -> None:
