@@ -21,7 +21,7 @@ docker-build:
 	docker build . -t $(DOCKER_IMAGE)
 
 docker-run: docker-build
-	docker run -d -e BOT_TOKEN=$$BOT_TOKEN $(DOCKER_IMAGE)
+	docker run -d --restart always -e BOT_TOKEN=$$BOT_TOKEN $(DOCKER_IMAGE)
 
 generate-requirements:
 	uv export --no-hashes --format requirements-txt > requirements.txt
