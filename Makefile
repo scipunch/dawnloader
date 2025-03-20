@@ -17,7 +17,7 @@ pre-commit: lint
 run: lint
 	uv run python __main__.py
 
-docker-build: lint
+docker-build:
 	docker build . -t $(DOCKER_IMAGE)
 
 docker-run: docker-build
